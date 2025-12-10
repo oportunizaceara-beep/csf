@@ -6,6 +6,9 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
     <style>
         :root {
             /* TEMA DARK */
@@ -241,12 +244,9 @@
     </div>
 </div>
 
-<script type="module">
-    // --- 1. CONFIGURAÇÃO FIREBASE CORRIGIDA ---
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // AGORA ESTÁ LIMPO E CORRETO:
+<script>
+    // --- 1. CONFIGURAÇÃO FIREBASE (UNIVERSAL) ---
+    // NOTA: NÃO ALTERE AQUI, JÁ ESTÁ ADAPTADO PARA RODAR SEM MÓDULOS
     const firebaseConfig = {
       apiKey: "AIzaSyBq5qmLy6HAzZAeC4KCVjLfdCM77ttOU3A",
       authDomain: "csf-iac.firebaseapp.com",
@@ -260,16 +260,15 @@
     // Inicialização segura
     let db;
     try {
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        console.log("Firebase conectado com sucesso!");
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        console.log("Firebase Universal conectado!");
     } catch (e) {
-        console.error("Erro Firebase (Verifique o Config):", e);
-        alert("Erro: Configuração do Firebase falhou. Veja o console.");
+        console.error("Erro Conexão:", e);
+        alert("Erro na conexão com o banco de dados. Verifique a internet.");
     }
 
-    // --- 2. DADOS PADRÃO (BACKUP) ---
-    // Você pode substituir isso pela lista completa se tiver
+    // --- 2. DADOS PADRÃO ---
     const defaultCourses = [
         { idLote: 964, curso: "Drinques e Coquetéis", cidade: "Itapipoca", inicio: "2025-07-07", fim: "2025-07-25", local: "Assoc. Serrote", status: "CONCLUIDO", alunos: 19, instrutor: "Thamires Brenda Santos" },
         { idLote: 1228, curso: "Sanduiches e Hambúrgueres", cidade: "Itapipoca", inicio: "2025-10-06", fim: "2025-10-10", local: "Mulheres que Alimentam", status: "CONCLUIDO", alunos: 21, instrutor: "Eronildo almeida" },
@@ -288,7 +287,7 @@
         { u: 'visitante', p: '1234', role: 'viewer' }
     ];
 
-    // --- 4. FUNÇÕES EXPOSTAS AO WINDOW ---
+    // --- 4. FUNÇÕES DE SISTEMA ---
     
     window.fazerLogin = function(e) {
         e.preventDefault();
@@ -317,15 +316,14 @@
         instrutores = [];
         
         try {
-            // Buscar Cursos
-            const queryC = await getDocs(collection(db, "cursos"));
-            queryC.forEach((doc) => {
+            // Sintaxe Universal (Compat)
+            const snapC = await db.collection("cursos").get();
+            snapC.forEach((doc) => {
                 cursos.push({ fireId: doc.id, ...doc.data() });
             });
 
-            // Buscar Instrutores
-            const queryI = await getDocs(collection(db, "instrutores"));
-            queryI.forEach((doc) => {
+            const snapI = await db.collection("instrutores").get();
+            snapI.forEach((doc) => {
                 instrutores.push({ fireId: doc.id, ...doc.data() });
             });
 
@@ -338,24 +336,21 @@
         }
     }
 
-    // Função Especial para Popular o Banco (Executar 1 vez)
     window.importarDadosPadrao = async function() {
         if(!confirm("Isso enviará os dados de exemplo para a nuvem. Continuar?")) return;
         
         document.getElementById('loading').classList.remove('hide');
-        const batch = writeBatch(db);
+        const batch = db.batch(); // Sintaxe Universal
         
-        // Adiciona cursos
         defaultCourses.forEach(c => {
-            const ref = doc(collection(db, "cursos"));
+            const ref = db.collection("cursos").doc();
             batch.set(ref, c);
         });
 
-        // Cria instrutores unicos
         const nomesInst = [...new Set(defaultCourses.map(c => c.instrutor))];
         nomesInst.forEach(nome => {
             if(nome) {
-                const ref = doc(collection(db, "instrutores"));
+                const ref = db.collection("instrutores").doc();
                 batch.set(ref, { nome: nome, tel: "" });
             }
         });
@@ -540,9 +535,9 @@
 
         try {
             if(id) {
-                await updateDoc(doc(db, "cursos", id), data);
+                await db.collection("cursos").doc(id).update(data);
             } else {
-                await addDoc(collection(db, "cursos"), data);
+                await db.collection("cursos").add(data);
             }
             window.fecharModal('modalCurso');
             carregarDadosNuvem();
@@ -554,7 +549,7 @@
         const id = document.getElementById('editId').value;
         if(id) {
             document.getElementById('loading').classList.remove('hide');
-            await deleteDoc(doc(db, "cursos", id));
+            await db.collection("cursos").doc(id).delete();
             window.fecharModal('modalCurso');
             carregarDadosNuvem();
         }
@@ -583,8 +578,8 @@
         };
         document.getElementById('loading').classList.remove('hide');
         try {
-            if(id) await updateDoc(doc(db, "instrutores", id), data);
-            else await addDoc(collection(db, "instrutores"), data);
+            if(id) await db.collection("instrutores").doc(id).update(data);
+            else await db.collection("instrutores").add(data);
             window.fecharModal('modalInstrutor');
             carregarDadosNuvem();
         } catch(err) { console.error(err); alert("Erro."); }
@@ -593,7 +588,7 @@
     window.excluirInstrutor = async function(id) {
         if(!confirm("Excluir?")) return;
         document.getElementById('loading').classList.remove('hide');
-        await deleteDoc(doc(db, "instrutores", id));
+        await db.collection("instrutores").doc(id).delete();
         carregarDadosNuvem();
     }
 
