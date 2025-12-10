@@ -242,33 +242,19 @@
 </div>
 
 <script type="module">
-    // --- 1. CONFIGURAÇÃO FIREBASE (SUBSTITUA AQUI!) ---
+    // --- 1. CONFIGURAÇÃO FIREBASE CORRIGIDA ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // COLE O SEU CONFIG ABAIXO
+    // AGORA ESTÁ LIMPO E CORRETO:
     const firebaseConfig = {
-        //// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBq5qmLy6HAzZAeC4KCVjLfdCM77ttOU3A",
-  authDomain: "csf-iac.firebaseapp.com",
-  projectId: "csf-iac",
-  storageBucket: "csf-iac.firebasestorage.app",
-  messagingSenderId: "484645494526",
-  appId: "1:484645494526:web:305acd754a4b77a2320faf",
-  measurementId: "G-PFMGTE7085"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+      apiKey: "AIzaSyBq5qmLy6HAzZAeC4KCVjLfdCM77ttOU3A",
+      authDomain: "csf-iac.firebaseapp.com",
+      projectId: "csf-iac",
+      storageBucket: "csf-iac.firebasestorage.app",
+      messagingSenderId: "484645494526",
+      appId: "1:484645494526:web:305acd754a4b77a2320faf",
+      measurementId: "G-PFMGTE7085"
     };
 
     // Inicialização segura
@@ -276,18 +262,18 @@ const analytics = getAnalytics(app);
     try {
         const app = initializeApp(firebaseConfig);
         db = getFirestore(app);
-        console.log("Firebase conectado!");
+        console.log("Firebase conectado com sucesso!");
     } catch (e) {
         console.error("Erro Firebase (Verifique o Config):", e);
-        alert("Erro: Configuração do Firebase ausente. Veja o código.");
+        alert("Erro: Configuração do Firebase falhou. Veja o console.");
     }
 
     // --- 2. DADOS PADRÃO (BACKUP) ---
+    // Você pode substituir isso pela lista completa se tiver
     const defaultCourses = [
         { idLote: 964, curso: "Drinques e Coquetéis", cidade: "Itapipoca", inicio: "2025-07-07", fim: "2025-07-25", local: "Assoc. Serrote", status: "CONCLUIDO", alunos: 19, instrutor: "Thamires Brenda Santos" },
         { idLote: 1228, curso: "Sanduiches e Hambúrgueres", cidade: "Itapipoca", inicio: "2025-10-06", fim: "2025-10-10", local: "Mulheres que Alimentam", status: "CONCLUIDO", alunos: 21, instrutor: "Eronildo almeida" },
-        { idLote: 1599, curso: "Eletricista Básico", cidade: "Crateús", inicio: "2025-12-01", fim: "2025-12-12", local: "Cozinha Planaltina", status: "EM ANDAMENTO", alunos: 0, instrutor: "Iranley" },
-        // ... (Para economizar espaço, adicionei apenas alguns, mas o ideal é importar tudo via botão)
+        { idLote: 1599, curso: "Eletricista Básico", cidade: "Crateús", inicio: "2025-12-01", fim: "2025-12-12", local: "Cozinha Planaltina", status: "EM ANDAMENTO", alunos: 0, instrutor: "Iranley" }
     ];
     
     // --- 3. ESTADO GLOBAL ---
@@ -346,7 +332,7 @@ const analytics = getAnalytics(app);
             window.renderizarTudo();
         } catch (e) {
             console.error(e);
-            alert("Erro ao baixar dados.");
+            alert("Erro ao baixar dados do Firebase. Verifique sua conexão.");
         } finally {
             document.getElementById('loading').classList.add('hide');
         }
@@ -354,26 +340,19 @@ const analytics = getAnalytics(app);
 
     // Função Especial para Popular o Banco (Executar 1 vez)
     window.importarDadosPadrao = async function() {
-        if(!confirm("Isso enviará os dados da planilha para a nuvem. Continuar?")) return;
+        if(!confirm("Isso enviará os dados de exemplo para a nuvem. Continuar?")) return;
         
         document.getElementById('loading').classList.remove('hide');
         const batch = writeBatch(db);
         
-        // Exemplo: Importar cursos padrão (aqui você colocaria o array completo `fullDataCourses` do código anterior)
-        // Vou criar alguns de exemplo para não travar
-        const exampleCourses = [
-             { idLote: 964, curso: "Drinques e Coquetéis", cidade: "Itapipoca", inicio: "2025-07-07", fim: "2025-07-25", local: "Assoc. Moradores do Serrote", status: "CONCLUIDO", alunos: 19, instrutor: "Thamires Brenda Santos" },
-             { idLote: 1228, curso: "Sanduiches e Hambúrgueres", cidade: "Itapipoca", inicio: "2025-10-06", fim: "2025-10-10", local: "Cozinha Mulheres que Alimentam", status: "CONCLUIDO", alunos: 21, instrutor: "Eronildo almeida" }
-        ];
-
         // Adiciona cursos
-        exampleCourses.forEach(c => {
+        defaultCourses.forEach(c => {
             const ref = doc(collection(db, "cursos"));
             batch.set(ref, c);
         });
 
         // Cria instrutores unicos
-        const nomesInst = [...new Set(exampleCourses.map(c => c.instrutor))];
+        const nomesInst = [...new Set(defaultCourses.map(c => c.instrutor))];
         nomesInst.forEach(nome => {
             if(nome) {
                 const ref = doc(collection(db, "instrutores"));
